@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>AI Resume Analyzer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f5f5f5;
+      --surface: #ffffff;
+      --border: #e0e0e0;
+      --text: #1a1a1a;
+      --muted: #666;
+      --accent: #4f46e5;
+      --accent-light: #eef2ff;
+      --success: #16a34a;
+      --success-light: #dcfce7;
+      --danger: #dc2626;
+    }
+
+    [data-theme="dark"] {
+      --bg: #111;
+      --surface: #1e1e1e;
+      --border: #333;
+      --text: #f0f0f0;
+      --muted: #aaa;
+      --accent: #818cf8;
+      --accent-light: #1e1b4b;
+      --success: #4ade80;
+      --success-light: #14532d;
+      --danger: #f87171;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      transition: background 0.2s, color 0.2s;
+    }
+
+    /* TOPBAR */
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.9rem 1.5rem;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .logo { font-size: 16px; font-weight: 600; color: var(--accent); }
+    .theme-btn {
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 5px 12px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--muted);
+    }
+    .theme-btn:hover { background: var(--accent-light); color: var(--accent); }
+
+    /* LAYOUT */
+    .container { max-width: 520px; margin: 2rem auto; padding: 0 1rem; }
+
+    /* TABS */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 4px;
+      margin-bottom: 1.5rem;
+    }
+    .tab {
+      flex: 1;
+      text-align: center;
+      padding: 8px;
+      font-size: 13px;
+      border-radius: 7px;
+      cursor: pointer;
+      color: var(--muted);
+      transition: all 0.15s;
+      border: none;
+      background: none;
+    }
+    .tab.active {
+      background: var(--accent);
+      color: #fff;
+      font-weight: 500;
+    }
+
+    /* CARD */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+    }
+    .card h2 { font-size: 16px; font-weight: 600; margin-bottom: 1.2rem; color: var(--text); }
+
+    /* FORM */
+    label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; margin-top: 12px; }
+    input[type="email"], input[type="password"], input[type="text"] {
+      width: 100%;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 14px;
+      background: var(--bg);
+      color: var(--text);
+      outline: none;
+      transition: border 0.15s;
+    }
+    input:focus { border-color: var(--accent); }
+
+    .btn {
+      width: 100%;
+      margin-top: 1rem;
+      padding: 10px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    .btn:hover { opacity: 0.88; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* UPLOAD AREA */
+    .upload-area {
+      border: 2px dashed var(--border);
+      border-radius: 10px;
+      padding: 2rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 1rem;
+    }
+    .upload-area:hover, .upload-area.dragover {
+      border-color: var(--accent);
+      background: var(--accent-light);
+    }
+    .upload-area .icon { font-size: 28px; margin-bottom: 8px; }
+    #fileInput { display: none; }
+
+    /* SCORE */
+    .score-wrap { text-align: center; margin-bottom: 1.5rem; }
+    .score-circle {
+      width: 90px;
+      height: 90px;
+      border-radius: 50%;
+      background: var(--accent-light);
+      border: 3px solid var(--accent);
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 8px;
+    }
+    .score-num { font-size: 26px; font-weight: 700; color: var(--accent); }
+    .score-sub { font-size: 11px; color: var(--muted); }
+
+    /* BADGES */
+    .skills-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: var(--success-light);
+      color: var(--success);
+      font-weight: 500;
+    }
+
+    /* FEEDBACK */
+    .feedback-box {
+      background: var(--accent-light);
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: var(--text);
+      margin-top: 1rem;
+      line-height: 1.6;
+    }
+
+    /* HISTORY */
+    .history-item {
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1rem;
+      margin-bottom: 0.75rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .history-name { font-size: 14px; font-weight: 500; }
+    .history-date { font-size: 12px; color: var(--muted); margin-top: 2px; }
+    .history-score {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--accent);
+    }
+
+    /* MSG */
+    .msg {
+      font-size: 13px;
+      padding: 8px 12px;
+      border-radius: 8px;
+      margin-top: 10px;
+      display: none;
+    }
+    .msg.success { background: var(--success-light); color: var(--success); display: block; }
+    .msg.error { background: #fee2e2; color: var(--danger); display: block; }
+
+    /* HIDDEN */
+    .page { display: none; }
+    .page.active { display: block; }
+  </style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="logo">AI Resume Analyzer</span>
+  <button class="theme-btn" onclick="toggleTheme()">Toggle Theme</button>
+</div>
+
+<div class="container">
+  <div class="tabs">
+    <button class="tab active" onclick="showTab('auth')">Login</button>
+    <button class="tab" onclick="showTab('upload')">Upload</button>
+    <button class="tab" onclick="showTab('history')">History</button>
+    <button class="tab" id="logoutTab" style="display:none;" onclick="logout()">Logout</button>
+  </div>
+
+  <!-- AUTH PAGE -->
+  <div class="page active" id="page-auth">
+    <div class="card">
+      <h2 id="authTitle">Login</h2>
+      <label>Email</label>
+      <input type="email" id="authEmail" placeholder="you@example.com" />
+      <label>Password</label>
+      <input type="password" id="authPassword" placeholder="••••••••" />
+      <button class="btn" onclick="submitAuth()">Login</button>
+      <p style="text-align:center; font-size:13px; margin-top:12px; color:var(--muted);">
+        <span id="authSwitch">Don't have an account? <a href="#" onclick="switchAuth()" style="color:var(--accent);">Register</a></span>
+      </p>
+      <div class="msg" id="authMsg"></div>
+    </div>
+  </div>
+
+  <!-- UPLOAD PAGE -->
+  <div class="page" id="page-upload">
+    <div class="card">
+      <h2>Upload Resume</h2>
+      <div class="upload-area" id="uploadArea" onclick="document.getElementById('fileInput').click()">
+        <div class="icon">📄</div>
+        <p>Click or drag & drop your PDF here</p>
+        <p style="font-size:12px; margin-top:4px;">Only .pdf files accepted</p>
+      </div>
+      <input type="file" id="fileInput" accept=".pdf" onchange="fileSelected(this)" />
+      <p id="fileName" style="font-size:13px; color:var(--muted); margin-bottom:8px;"></p>
+      <button class="btn" id="analyzeBtn" onclick="uploadResume()" disabled>Upload and Analyze</button>
+      <div class="msg" id="uploadMsg"></div>
+    </div>
+
+    <!-- RESULTS -->
+    <div class="card" id="resultsCard" style="display:none;">
+      <h2>Results</h2>
+      <div class="score-wrap">
+        <div class="score-circle">
+          <span class="score-num" id="scoreNum">0</span>
+          <span class="score-sub">/ 100</span>
+        </div>
+      </div>
+      <p style="font-size:12px; color:var(--muted); font-weight:500;">Skills Found</p>
+      <div class="skills-wrap" id="skillsWrap"></div>
+      <div class="feedback-box" id="feedbackBox"></div>
+    </div>
+  </div>
+
+  <!-- HISTORY PAGE -->
+  <div class="page" id="page-history">
+    <div class="card">
+      <h2>Resume History</h2>
+      <div id="historyList"><p style="color:var(--muted); font-size:14px;">No history yet.</p></div>
+    </div>
+  </div>
+</div>
+
+<script>
+  let token = localStorage.getItem("token") || null;
+  let isLogin = true;
+
+  // ── THEME ──────────────────────────────────────────────
+  function toggleTheme() {
+    const html = document.documentElement;
+    html.setAttribute("data-theme", html.getAttribute("data-theme") === "dark" ? "light" : "dark");
+  }
+  if (window.matchMedia("(prefers-color-scheme: dark)").matches)
+    document.documentElement.setAttribute("data-theme", "dark");
+
+  // ── TABS ───────────────────────────────────────────────
+  function showTab(name) {
+    if ((name === "upload" || name === "history") && !token) {
+      showMsg("authMsg", "Please login first.", "error");
+      return;
+    }
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.getElementById("page-" + name).classList.add("active");
+    event.target.classList.add("active");
+    if (name === "history") loadHistory();
+  }
+
+  // ── AUTH ───────────────────────────────────────────────
+  function switchAuth() {
+    isLogin = !isLogin;
+    document.getElementById("authTitle").textContent = isLogin ? "Login" : "Register";
+    document.querySelector("#authSwitch").innerHTML = isLogin
+      ? `Don't have an account? <a href="#" onclick="switchAuth()" style="color:var(--accent);">Register</a>`
+      : `Already have an account? <a href="#" onclick="switchAuth()" style="color:var(--accent);">Login</a>`;
+    document.querySelector(".btn").textContent = isLogin ? "Login" : "Register";
+  }
+
+  async function submitAuth() {
+    const email = document.getElementById("authEmail").value.trim();
+    const password = document.getElementById("authPassword").value;
+    if (!email || !password) return showMsg("authMsg", "Fill in all fields.", "error");
+
+    const endpoint = isLogin ? "/login" : "/register";
+    try {
+      const res = await fetch("http://localhost:3000" + endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+      });
+      const data = await res.json();
+      if (!res.ok) return showMsg("authMsg", data.error, "error");
+
+      if (isLogin) {
+        token = data.token;
+        localStorage.setItem("token", token);
+        showMsg("authMsg", "Logged in!", "success");
+        document.getElementById("logoutTab").style.display = "block";
+        setTimeout(() => showTab("upload"), 800);
+      } else {
+        showMsg("authMsg", "Registered! Please login.", "success");
+        setTimeout(switchAuth, 1000);
+      }
+    } catch {
+      showMsg("authMsg", "Server error. Is the backend running?", "error");
+    }
+  }
+
+  function logout() {
+    token = null;
+    localStorage.removeItem("token");
+    document.getElementById("logoutTab").style.display = "none";
+    document.querySelectorAll(".page").forEach(p => p.classList.remove("active"));
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    document.getElementById("page-auth").classList.add("active");
+    document.querySelector(".tab").classList.add("active");
+  }
+
+  // ── UPLOAD ─────────────────────────────────────────────
+  function fileSelected(input) {
+    const file = input.files[0];
+    if (file) {
+      document.getElementById("fileName").textContent = "Selected: " + file.name;
+      document.getElementById("analyzeBtn").disabled = false;
+    }
+  }
+
+  // Drag & drop
+  const uploadArea = document.getElementById("uploadArea");
+  uploadArea.addEventListener("dragover", e => { e.preventDefault(); uploadArea.classList.add("dragover"); });
+  uploadArea.addEventListener("dragleave", () => uploadArea.classList.remove("dragover"));
+  uploadArea.addEventListener("drop", e => {
+    e.preventDefault();
+    uploadArea.classList.remove("dragover");
+    const file = e.dataTransfer.files[0];
+    if (file && file.type === "application/pdf") {
+      document.getElementById("fileInput").files = e.dataTransfer.files;
+      fileSelected(document.getElementById("fileInput"));
+    } else {
+      showMsg("uploadMsg", "Only PDF files allowed.", "error");
+    }
+  });
+
+  async function uploadResume() {
+    const file = document.getElementById("fileInput").files[0];
+    if (!file) return showMsg("uploadMsg", "Please select a file.", "error");
+
+    const btn = document.getElementById("analyzeBtn");
+    btn.disabled = true;
+    btn.textContent = "Analyzing...";
+
+    const formData = new FormData();
+    formData.append("resume", file);
+
+    try {
+      const res = await fetch("http://localhost:3000/analyze-uploaded-resume", {
+        method: "POST",
+        headers: { Authorization: "Bearer " + token },
+        body: formData
+      });
+      const data = await res.json();
+      if (!res.ok) return showMsg("uploadMsg", data.error, "error");
+
+      showResults(data);
+    } catch {
+      showMsg("uploadMsg", "Server error.", "error");
+    } finally {
+      btn.disabled = false;
+      btn.textContent = "Upload and Analyze";
+    }
+  }
+
+  function showResults(data) {
+    document.getElementById("resultsCard").style.display = "block";
+    document.getElementById("scoreNum").textContent = data.score;
+    document.getElementById("feedbackBox").textContent = data.feedback;
+    const wrap = document.getElementById("skillsWrap");
+    wrap.innerHTML = data.foundSkills.map(s => `<span class="badge">${s}</span>`).join("");
+    document.getElementById("resultsCard").scrollIntoView({ behavior: "smooth" });
+  }
+
+  // ── HISTORY ────────────────────────────────────────────
+  async function loadHistory() {
+    try {
+      const res = await fetch("http://localhost:3000/history", {
+        headers: { Authorization: "Bearer " + token }
+      });
+      const data = await res.json();
+      const list = document.getElementById("historyList");
+      if (!data.length) {
+        list.innerHTML = "<p style='color:var(--muted); font-size:14px;'>No history yet.</p>";
+        return;
+      }
+      list.innerHTML = data.map(r => `
+        <div class="history-item">
+          <div>
+            <p class="history-name">${r.fileName}</p>
+            <p class="history-date">${new Date(r.createdAt).toLocaleDateString()}</p>
+            <div class="skills-wrap">${(r.foundSkills || []).map(s => `<span class="badge">${s}</span>`).join("")}</div>
+          </div>
+          <div class="history-score">${r.score}</div>
+        </div>`).join("");
+    } catch {
+      document.getElementById("historyList").innerHTML = "<p style='color:var(--muted);'>Could not load history.</p>";
+    }
+  }
+
+  // ── UTILS ──────────────────────────────────────────────
+  function showMsg(id, text, type) {
+    const el = document.getElementById(id);
+    el.textContent = text;
+    el.className = "msg " + type;
+  }
+
+  // Auto-login if token exists
+  if (token) {
+    document.getElementById("logoutTab").style.display = "block";
+  }
+</script>
+</body>
+</html>

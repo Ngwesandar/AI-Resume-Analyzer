@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>AI Resume Analyzer</title>
+</head>
+<body>
+
+<h2>Upload Resume</h2>
+
+<input type="file" id="pdfInput" accept=".pdf"><br><br>
+<button id="uploadBtn" type="button">Upload and Analyze</button>
+
+<pre id="output" style="white-space: pre-wrap; border:1px solid #ccc; padding:10px; margin-top:10px;">
+Output will appear here...
+</pre>
+
+<script>
+async function uploadResume() {
+  const fileInput = document.querySelector('input[type="file"]');
+  const file = fileInput.files[0];
+
+  if (!file) {
+    document.getElementById("output").innerText = "Please select a file.";
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append("resume", file);
+
+  try {
+    const response = await fetch("http://localhost:3000/analyze-uploaded-resume", {
+      method: "POST",
+      body: formData
+    });
+
+    const data = await response.json();
+
+    document.getElementById("output").innerText =
+      "Score: " + data.score + "\n\nResume Text:\n" + data.text;
+
+  } catch (error) {
+    document.getElementById("output").innerText = "Error: " + error.message;
+  }
+}
+</script>
+
+</body>
+</html>
