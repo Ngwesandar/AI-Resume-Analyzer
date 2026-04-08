@@ -21,18 +21,3 @@ A full-stack MERN application that analyzes resumes and scores them based on det
 ### Prerequisites
 - Node.js
 - MongoDB running locally
-
-### Installation
-
-1. Clone the repo
-```bash
-   git clone https://github.com/YOUR_USERNAME/ai-resume-analyzer.git
-   cd ai-resume-analyzer
-```
-
-2. Install dependencies
-```bash
-   npm install
-```
-
-3. Create a `.env` file
